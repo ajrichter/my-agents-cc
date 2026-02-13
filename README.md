@@ -2,103 +2,78 @@
 
 Modular Claude Code subagent pipeline for migrating HTTP/REST endpoints to GraphQL — across one or many repositories.
 
-## Architecture
+## 3 Agents, 18 Skills
 
-```
-my-agents-cc/
-├── CLAUDE.md                          # Root agent instructions
-├── package.json                       # npm scripts for running agents
-│
-├── agents/
-│   ├── discoverer/                    # Agent 1: Magellan
-│   │   ├── CLAUDE.md                  # Agent instructions & skill index
-│   │   └── skills/
-│   │       ├── scan-repo.md           # Full repo scan for HTTP calls
-│   │       ├── match-endpoints.md     # Fuzzy match endpoints to calls
-│   │       ├── generate-graphql.md    # Generate GQL queries from REST
-│   │       ├── detect-language.md     # Detect repo language & framework
-│   │       └── plan-migration.md      # Create prioritized migration plan
-│   │
-│   ├── builder/                       # Agent 2: Bob the Builder
-│   │   ├── CLAUDE.md                  # Agent instructions & skill index
-│   │   └── skills/
-│   │       ├── detect-stack.md        # Deep stack analysis
-│   │       ├── setup-graphql-client.md # GQL client boilerplate
-│   │       ├── generate-query-files.md # Per-endpoint query generation
-│   │       ├── tdd-cycle.md           # Red-Green-Refactor loop
-│   │       ├── replace-rest-calls.md  # Swap REST → GQL in-place
-│   │       └── validate-build.md      # Build & full test suite
-│   │
-│   └── inspector/                     # Agent 3: Inspector Gadget
-│       ├── CLAUDE.md                  # Agent instructions & skill index
-│       └── skills/
-│           ├── validate-tests.md      # Run & verify all tests
-│           ├── lint-and-style.md      # Lint, format, style consistency
-│           ├── code-review.md         # Senior-level code review
-│           ├── completeness-check.md  # Verify all endpoints migrated
-│           ├── safety-check.md        # Production safety validation
-│           ├── decide-loop.md         # Loop-back decision logic
-│           └── generate-report.md     # Final summary report
-│
-├── shared/
-│   ├── tracking.js                    # JSON tracking system
-│   └── schemas.js                     # Input/output contracts
-│
-├── orchestrator/
-│   ├── run-agent.js                   # Run single agent
-│   ├── run-pipeline.js                # Run full 3-agent pipeline
-│   ├── run-multi-repo.js              # Run across folder of repos
-│   ├── status.js                      # View pipeline status
-│   └── reset.js                       # Reset pipeline state
-│
-├── templates/
-│   ├── endpoints-example.json         # Example endpoints input
-│   └── graphql/
-│       └── schema-example.graphql     # Example GQL schema
-│
-└── tracking/                          # (runtime) status files
-```
-
-## Skills Map (All 18 Skills)
-
-### Agent 1: Discoverer (Magellan) — 5 Skills
-
-| Skill | Purpose | Input | Output |
-|-------|---------|-------|--------|
-| `scan-repo` | Full file scan for HTTP client calls (axios, fetch, RestTemplate, etc.) | Repo path | Array of raw HTTP call locations |
-| `match-endpoints` | Fuzzy-match discovered calls to endpoint definitions | Scan results + endpoints JSON | Endpoint → location mapping with confidence |
-| `generate-graphql` | Generate GQL query/mutation from REST endpoint definition | Endpoint + optional schema | GraphQL operation string |
-| `detect-language` | Detect primary language, framework, HTTP client, test framework | Repo path | Language profile JSON |
-| `plan-migration` | Prioritize endpoints, rate complexity, flag risks | All match results | Ordered migration plan |
-
-### Agent 2: Bob the Builder — 6 Skills
-
-| Skill | Purpose | Input | Output |
-|-------|---------|-------|--------|
-| `detect-stack` | Deep tech stack analysis (framework, deps, patterns) | Repo + discoverer output | Complete stack profile |
-| `setup-graphql-client` | Generate/configure GQL client infrastructure | Stack profile | Client setup files |
-| `generate-query-files` | Create .graphql files and typed wrapper functions | Per endpoint from plan | Query files + wrappers |
-| `tdd-cycle` | Red→Green→Refactor loop for each endpoint | Endpoint to migrate | TDD log + passing tests |
-| `replace-rest-calls` | Swap REST calls with GQL wrappers in-place | Occurrence locations | Modified source files |
-| `validate-build` | Run build + full test suite, fix failures | All changes complete | Build/test report |
-
-### Agent 3: Inspector Gadget — 7 Skills
-
-| Skill | Purpose | Input | Output |
-|-------|---------|-------|--------|
-| `validate-tests` | Run full test suite, verify new tests exist | Builder output | Test results + coverage |
-| `lint-and-style` | Run linter, auto-fix, check style consistency | Changed files | Lint report |
-| `code-review` | Senior-level review (correctness, security, perf) | Each changed file | Per-file review verdict |
-| `completeness-check` | Verify all planned endpoints were migrated | Discoverer + builder output | Completeness report |
-| `safety-check` | Feature flags, fallbacks, auth, rollback readiness | All changes | Safety assessment |
-| `decide-loop` | Determine if Builder needs to re-run | All validation results | Loop decision + instructions |
-| `generate-report` | Final summary with confidence score and recommendations | All inspection results | Architect-ready report |
+| Agent | Codename | Skills | Role |
+|-------|----------|--------|------|
+| 1 | **Magellan** the Discoverer | 5 skills | Scans repos, matches endpoints, generates GQL queries, plans migration |
+| 2 | **Bob** the Builder | 6 skills | Generates GQL code with strict TDD, replaces REST calls |
+| 3 | **Inspector Gadget** | 7 skills | Validates, reviews, lints, decides if Bob loops back |
 
 ## How to Use
 
-### 1. Prepare Your Input
+### Option A: Inside Claude Code REPL (interactive)
 
-Create an endpoints JSON file listing the REST endpoints to migrate:
+```bash
+cd /path/to/target-repo
+claude
+```
+
+Then in the REPL:
+```
+# Delegate to named agents
+> Use the magellan agent to scan this repo for REST endpoints
+> Use the bob-the-builder agent to generate GraphQL code
+> Use the inspector-gadget agent to validate the changes
+
+# Or use slash commands for individual skills
+> /generate-graphql
+> /setup-graphql-client
+> /validate-build
+> /code-review
+> /generate-report
+> /lint-and-style
+> /validate-tests
+> /replace-rest-calls
+```
+
+### Option B: CLI one-shot with named agent
+
+```bash
+cd /path/to/target-repo
+claude -p "Scan this repo for REST endpoints" --agent magellan --output-format json
+claude -p "Generate GraphQL code using TDD" --agent bob-the-builder --output-format json
+claude -p "Validate all changes" --agent inspector-gadget --output-format json
+```
+
+### Option C: Shell scripts
+
+```bash
+# Individual agents
+./scripts/run-magellan.sh /path/to/repo endpoints.json
+./scripts/run-bob.sh /path/to/repo
+./scripts/run-gadget.sh /path/to/repo
+
+# Full pipeline (Magellan → Bob → Gadget with loop-back)
+./scripts/run-pipeline.sh /path/to/repo endpoints.json
+
+# Pipeline across all repos in a folder (parallel)
+./scripts/run-multi-repo.sh /path/to/repos endpoints.json
+
+# Check status
+./scripts/status.sh /path/to/repo
+```
+
+### Option D: Run scripts from inside Claude Code
+
+```
+> Run ./scripts/run-pipeline.sh . templates/endpoints-example.json
+> Run ./scripts/status.sh .
+```
+
+## Input Format
+
+Create an endpoints JSON file (see `templates/endpoints-example.json`):
 
 ```json
 {
@@ -111,57 +86,20 @@ Create an endpoints JSON file listing the REST endpoints to migrate:
     }
   ],
   "graphqlSchema": "./schema.graphql",
-  "languages": ["javascript"]
+  "languages": ["javascript", "java"]
 }
-```
-
-See `templates/endpoints-example.json` for a full example.
-
-### 2. Run Against a Single Repo
-
-```bash
-# Run agents individually
-npm run discover -- --repo /path/to/repo --endpoints endpoints.json
-npm run build    -- --repo /path/to/repo
-npm run inspect  -- --repo /path/to/repo
-
-# Or run the full pipeline
-npm run pipeline -- --repo /path/to/repo --endpoints endpoints.json
-
-# Check status anytime
-npm run status -- --repo /path/to/repo
-
-# Reset and start over
-npm run reset -- --repo /path/to/repo
-```
-
-### 3. Run Against Multiple Repos
-
-```bash
-# All repos in a folder
-npm run pipeline:multi -- --folder /path/to/repos --endpoints endpoints.json
-```
-
-### 4. Run Agents Directly with Claude Code
-
-Each agent can be invoked directly by pointing Claude Code at the agent's CLAUDE.md:
-
-```bash
-cd /path/to/target-repo
-claude --claude-md /path/to/my-agents-cc/agents/discoverer/CLAUDE.md
 ```
 
 ## Pipeline Flow
 
 ```
                     ┌─────────────────┐
-                    │  Endpoints JSON │
-                    │  + GQL Schema   │
+                    │  Endpoints JSON  │
                     └────────┬────────┘
                              │
                     ┌────────▼────────┐
-                    │   DISCOVERER    │
-                    │   (Magellan)    │
+                    │    MAGELLAN     │
+                    │  the Discoverer │
                     │                 │
                     │  scan-repo      │
                     │  detect-language│
@@ -170,56 +108,136 @@ claude --claude-md /path/to/my-agents-cc/agents/discoverer/CLAUDE.md
                     │  plan-migration │
                     └────────┬────────┘
                              │
-                    discoverer-output.json
+                  discoverer-output.json
                              │
-               ┌─────────────▼─────────────┐
-               │       BOB THE BUILDER     │
-           ┌──►│                           │
-           │   │  detect-stack             │
-           │   │  setup-graphql-client     │
-           │   │  generate-query-files     │
-           │   │  tdd-cycle (per endpoint) │
-           │   │  replace-rest-calls       │
-           │   │  validate-build           │
-           │   └─────────────┬─────────────┘
-           │                 │
-           │        builder-output.json
-           │                 │
-           │   ┌─────────────▼─────────────┐
-           │   │    INSPECTOR GADGET       │
-           │   │                           │
-           │   │  validate-tests           │
-           │   │  lint-and-style           │
-           │   │  code-review              │
-           │   │  completeness-check       │
-           │   │  safety-check             │
-           │   │  decide-loop ─────────────┼──► loop back?
-           │   │  generate-report          │        │
-           │   └─────────────┬─────────────┘        │
-           │                 │                      │
-           └─────── YES ─────┘            NO ───────┘
-                                          │
-                                 inspector-output.json
-                                          │
-                                    ┌─────▼─────┐
-                                    │  APPROVED  │
-                                    │  + Report  │
-                                    └───────────┘
+              ┌──────────────▼──────────────┐
+              │      BOB THE BUILDER        │
+          ┌──►│                             │
+          │   │  detect-stack               │
+          │   │  setup-graphql-client       │
+          │   │  tdd-cycle (per endpoint)   │
+          │   │  generate-query-files       │
+          │   │  replace-rest-calls         │
+          │   │  validate-build             │
+          │   └──────────────┬──────────────┘
+          │                  │
+          │       builder-output.json
+          │                  │
+          │   ┌──────────────▼──────────────┐
+          │   │     INSPECTOR GADGET        │
+          │   │                             │
+          │   │  validate-tests             │
+          │   │  lint-and-style             │
+          │   │  code-review                │
+          │   │  completeness-check         │
+          │   │  safety-check               │
+          │   │  decide-loop ───────────────┼──► loop?
+          │   │  generate-report            │      │
+          │   └──────────────┬──────────────┘      │
+          │                  │                     │
+          └──── YES ─────────┘           NO ───────┘
+                                         │
+                                inspector-output.json
+                                         │
+                                   ┌─────▼─────┐
+                                   │  APPROVED  │
+                                   │  + Report  │
+                                   └───────────┘
 ```
 
-## JSON Tracking System
+## Directory Structure
 
-Each target repo gets a `.agent-tracking/` directory containing:
+```
+my-agents-cc/
+├── CLAUDE.md                            # Project context (auto-loaded)
+├── README.md
+├── .claude/
+│   ├── agents/
+│   │   ├── magellan.md                  # Agent 1: Magellan the Discoverer
+│   │   ├── bob-the-builder.md           # Agent 2: Bob the Builder
+│   │   └── inspector-gadget.md          # Agent 3: Inspector Gadget
+│   └── skills/
+│       ├── scan-repo/SKILL.md           # Discoverer skills (5)
+│       ├── match-endpoints/SKILL.md
+│       ├── generate-graphql/SKILL.md
+│       ├── detect-language/SKILL.md
+│       ├── plan-migration/SKILL.md
+│       ├── detect-stack/SKILL.md        # Builder skills (6)
+│       ├── setup-graphql-client/SKILL.md
+│       ├── generate-query-files/SKILL.md
+│       ├── tdd-cycle/SKILL.md
+│       ├── replace-rest-calls/SKILL.md
+│       ├── validate-build/SKILL.md
+│       ├── validate-tests/SKILL.md      # Inspector skills (7)
+│       ├── lint-and-style/SKILL.md
+│       ├── code-review/SKILL.md
+│       ├── completeness-check/SKILL.md
+│       ├── safety-check/SKILL.md
+│       ├── decide-loop/SKILL.md
+│       └── generate-report/SKILL.md
+├── scripts/
+│   ├── run-magellan.sh                  # Run Magellan alone
+│   ├── run-bob.sh                       # Run Bob alone
+│   ├── run-gadget.sh                    # Run Gadget alone
+│   ├── run-pipeline.sh                  # Full pipeline with loop
+│   ├── run-multi-repo.sh               # Parallel across repos
+│   └── status.sh                        # View tracking status
+└── templates/
+    ├── endpoints-example.json           # Example endpoints input
+    └── graphql/
+        └── schema-example.graphql       # Example GQL schema
+```
 
-| File | Purpose |
-|------|---------|
-| `pipeline-status.json` | Overall pipeline state, phase statuses |
-| `discoverer-input.json` | Copy of endpoints input |
-| `discoverer-output.json` | Scan results, GQL mappings, migration plan |
-| `builder-output.json` | Generated files, test results, TDD log |
-| `inspector-output.json` | Validation results, review verdicts, report |
-| `change-manifest.json` | All file changes + scan coverage proof |
-| `builder-loop-instructions.json` | Loop-back instructions (if needed) |
+## All 18 Skills
+
+### Magellan (Discoverer) — 5 Skills
+
+| Skill | Slash Command | Purpose |
+|-------|--------------|---------|
+| `scan-repo` | (auto) | Full repo scan for HTTP client calls |
+| `detect-language` | (auto) | Detect language, framework, test tools |
+| `match-endpoints` | (auto) | Fuzzy-match calls to endpoint list |
+| `generate-graphql` | `/generate-graphql` | Generate GQL query from REST endpoint |
+| `plan-migration` | (auto) | Prioritized migration plan |
+
+### Bob (Builder) — 6 Skills
+
+| Skill | Slash Command | Purpose |
+|-------|--------------|---------|
+| `detect-stack` | (auto) | Deep tech stack analysis |
+| `setup-graphql-client` | `/setup-graphql-client` | Scaffold GQL client |
+| `generate-query-files` | `/generate-query-files` | Create .graphql + wrapper |
+| `tdd-cycle` | (auto) | Red-green-refactor loop |
+| `replace-rest-calls` | `/replace-rest-calls` | Swap REST -> GQL in code |
+| `validate-build` | `/validate-build` | Run build + tests |
+
+### Gadget (Inspector) — 7 Skills
+
+| Skill | Slash Command | Purpose |
+|-------|--------------|---------|
+| `validate-tests` | `/validate-tests` | Run test suite + verify coverage |
+| `lint-and-style` | `/lint-and-style` | Lint + auto-fix + style check |
+| `code-review` | `/code-review` | Senior-level review |
+| `completeness-check` | (auto) | Verify all endpoints migrated |
+| `safety-check` | (auto) | Production safety validation |
+| `decide-loop` | (auto) | Loop-back decision |
+| `generate-report` | `/generate-report` | Final architect summary |
+
+## Tracking
+
+Each target repo gets a `.agent-tracking/` directory:
+
+| File | Written by | Purpose |
+|------|-----------|---------|
+| `pipeline-status.json` | scripts | Overall pipeline state |
+| `magellan-status.json` | Magellan | Discoverer phase status |
+| `bob-status.json` | Bob | Builder phase status |
+| `gadget-status.json` | Gadget | Inspector phase status |
+| `discoverer-input.json` | scripts | Copy of endpoints input |
+| `discoverer-output.json` | Magellan | Scan results + migration plan |
+| `builder-output.json` | Bob | Generated files + test results |
+| `inspector-output.json` | Gadget | Validation results + report |
+| `builder-loop-instructions.json` | Gadget | Fix instructions for Bob (if looping) |
 
 ## Supported Languages
 
@@ -228,12 +246,3 @@ Each target repo gets a `.agent-tracking/` directory containing:
 | JavaScript/TypeScript | axios, fetch, got, superagent, ky | Apollo, urql, graphql-request | Primary |
 | Java | RestTemplate, WebClient, OkHttp, Retrofit, Feign | Spring GraphQL, HttpGraphQlClient | Primary |
 | Python | requests, httpx, aiohttp | gql, sgqlc | Future |
-
-## Key Design Decisions
-
-1. **Agents communicate via JSON files** — no direct coupling, each can run independently
-2. **Skills are markdown documents** — they serve as structured instructions for Claude Code, not executable code
-3. **Tracking is per-repo** — `.agent-tracking/` lives inside each target repo so multiple repos can be processed in parallel
-4. **TDD is mandatory** — Builder must write failing tests first, then implement
-5. **Inspector can loop** — up to 3 times back to Builder for fixes before escalating to manual review
-6. **Scan coverage is tracked** — Discoverer must prove it scanned the entire repo

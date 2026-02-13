@@ -1,53 +1,65 @@
 # My Agents CC — Modular Claude Code Subagent Pipeline
 
-## Overview
-This project contains 3 modular Claude Code subagents that work independently or together as a pipeline to migrate HTTP REST endpoints to GraphQL across one or many repositories.
+Migrates HTTP/REST endpoints to GraphQL across one or many repositories using 3 modular Claude Code agents.
 
-## Architecture
+## Agents
+
+| Agent | Name | Role |
+|-------|------|------|
+| `.claude/agents/magellan.md` | Magellan the Discoverer | Scans repos, matches endpoints, generates GQL queries, produces migration plan |
+| `.claude/agents/bob-the-builder.md` | Bob the Builder | Generates GQL client code with strict TDD, replaces REST calls |
+| `.claude/agents/inspector-gadget.md` | Inspector Gadget | Validates changes, reviews code, decides if Bob needs to loop back |
+
+## Skills (18 total)
+
+### Magellan's skills (5)
+- `scan-repo` — full repo scan for HTTP client calls
+- `detect-language` — detect language, framework, HTTP client, test framework
+- `match-endpoints` — fuzzy-match discovered calls to endpoint list
+- `generate-graphql` — generate GQL queries from REST definitions (slash: `/generate-graphql`)
+- `plan-migration` — prioritize endpoints, rate complexity, flag risks
+
+### Bob's skills (6)
+- `detect-stack` — deep tech stack analysis
+- `setup-graphql-client` — scaffold GQL client infrastructure (slash: `/setup-graphql-client`)
+- `generate-query-files` — create .graphql files + wrapper functions (slash: `/generate-query-files`)
+- `tdd-cycle` — red-green-refactor loop per endpoint
+- `replace-rest-calls` — swap REST calls with GQL wrappers (slash: `/replace-rest-calls`)
+- `validate-build` — run build + test suite (slash: `/validate-build`)
+
+### Gadget's skills (7)
+- `validate-tests` — run tests, verify coverage (slash: `/validate-tests`)
+- `lint-and-style` — lint, auto-fix, style consistency (slash: `/lint-and-style`)
+- `code-review` — senior-level code review (slash: `/code-review`)
+- `completeness-check` — verify all endpoints migrated
+- `safety-check` — production safety validation
+- `decide-loop` — should Bob re-run?
+- `generate-report` — final summary for architect (slash: `/generate-report`)
+
+## Pipeline Flow
 
 ```
-orchestrator/          — Pipeline runner, multi-repo runner, status viewer
-agents/
-  discoverer/          — Agent 1: Magellan — scans repos for endpoints, maps to GQL
-  builder/             — Agent 2: Bob the Builder — generates GQL code with TDD
-  inspector/           — Agent 3: Inspector Gadget — validates, lints, loops back
-shared/                — Shared utilities (tracking, config, schemas)
-scripts/               — Helper scripts
-templates/             — Code generation templates (Java, JS)
-tracking/              — JSON status files (generated at runtime)
+Endpoints JSON → Magellan → discoverer-output.json
+                              ↓
+                            Bob ←──── loop back? ←── Gadget
+                              ↓                        ↑
+                         builder-output.json ─────────→│
+                                                       ↓
+                                              inspector-output.json → APPROVED
 ```
 
-## Running Agents
+## Tracking
 
-Each agent can be invoked independently via Claude Code by `cd`-ing into its folder and running claude with that agent's CLAUDE.md context, or through the orchestrator:
-
-```bash
-# Individual agents
-npm run discover -- --repo /path/to/repo --endpoints endpoints.json
-npm run build    -- --repo /path/to/repo
-npm run inspect  -- --repo /path/to/repo
-
-# Full pipeline (all 3 in sequence)
-npm run pipeline -- --repo /path/to/repo --endpoints endpoints.json
-
-# Multi-repo (run pipeline across all repos in a folder)
-npm run pipeline:multi -- --folder /path/to/repos --endpoints endpoints.json
-
-# Check status
-npm run status -- --repo /path/to/repo
-```
-
-## Agent Communication
-Agents communicate via JSON tracking files in each target repo's `.agent-tracking/` directory. Each agent reads the previous agent's output and writes its own. The orchestrator manages the flow.
+Each target repo gets `.agent-tracking/` with:
+- `pipeline-status.json` — overall state
+- `discoverer-input.json` — endpoints input
+- `discoverer-output.json` — Magellan's findings
+- `builder-output.json` — Bob's generated code report
+- `inspector-output.json` — Gadget's validation report
+- `builder-loop-instructions.json` — loop-back instructions (if needed)
+- `magellan-status.json`, `bob-status.json`, `gadget-status.json` — per-agent status
 
 ## Supported Languages
 - JavaScript/TypeScript (primary)
 - Java (primary)
 - Python (future)
-
-## Key Rules
-- Never modify files outside the target repo
-- Always write tracking JSON before and after changes
-- Each agent must be independently runnable
-- All code changes must be validated before marking complete
-- TDD approach: red test → code → green test
