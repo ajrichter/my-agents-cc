@@ -1,0 +1,48 @@
+{
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/users/:id",
+      "attributes": ["id", "name", "email", "createdAt"],
+      "description": "Fetch a single user by ID"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users",
+      "attributes": ["id", "name", "email"],
+      "description": "List all users, supports pagination"
+    },
+    {
+      "method": "POST",
+      "path": "/api/users",
+      "attributes": ["name", "email", "password"],
+      "description": "Create a new user"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/users/:id",
+      "attributes": ["name", "email"],
+      "description": "Update user details"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/users/:id",
+      "attributes": ["id"],
+      "description": "Delete a user"
+    },
+    {
+      "method": "GET",
+      "path": "/api/orders/:orderId",
+      "attributes": ["id", "userId", "items", "total", "status"],
+      "description": "Fetch order details"
+    },
+    {
+      "method": "POST",
+      "path": "/api/orders",
+      "attributes": ["userId", "items"],
+      "description": "Create a new order"
+    }
+  ],
+  "graphqlSchema": "./schema.graphql",
+  "languages": ["javascript", "java"]
+}

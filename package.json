@@ -1,0 +1,17 @@
+{
+  "name": "my-agents-cc",
+  "version": "1.0.0",
+  "description": "Modular Claude Code subagent pipeline: Discoverer, Builder, Inspector — for migrating HTTP endpoints to GraphQL",
+  "type": "module",
+  "scripts": {
+    "discover": "node orchestrator/run-agent.js discoverer",
+    "build": "node orchestrator/run-agent.js builder",
+    "inspect": "node orchestrator/run-agent.js inspector",
+    "pipeline": "node orchestrator/run-pipeline.js",
+    "pipeline:multi": "node orchestrator/run-multi-repo.js",
+    "status": "node orchestrator/status.js",
+    "reset": "node orchestrator/reset.js"
+  },
+  "keywords": ["claude-code", "subagents", "graphql", "migration"],
+  "license": "MIT"
+}
